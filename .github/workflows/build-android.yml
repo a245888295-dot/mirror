@@ -51,13 +51,35 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build ccache glslang-tools patch
+          ccache --max-size=4G
+          ccache --set-config=compression=true
+
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: |
+            ccache-
+
+      - name: Restore Gradle caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('src/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-
 
       - name: Build
         env:
           CCACHE: "true"
+          CCACHE_DIR: /home/runner/.cache/ccache
         run: |
           chmod +x .ci/android/build.sh
           .ci/android/build.sh -t standard -b "${{ github.event.inputs.build_type || 'RelWithDebInfo' }}"
+          ccache --show-stats
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

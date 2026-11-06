@@ -7,6 +7,8 @@ import android.util.Log
 import org.yuzu.yuzu_emu.YuzuApplication
 import java.io.File
 import java.io.OutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Drives a Nintendo controller's HD rumble actuators through /dev/hidraw.
@@ -23,6 +25,7 @@ object HdRumbleHidraw {
     private const val TMP_HELPER = "/data/local/tmp/hidraw_sender"
     private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 5000L
+    private const val READY_TIMEOUT_MS = 10_000L
 
     private var process: Process? = null
     private var output: OutputStream? = null
@@ -57,48 +60,93 @@ object HdRumbleHidraw {
 
         // SELinux forbids executing binaries inside the app's nativeLibraryDir,
         // so stage a copy in /data/local/tmp (shell_data_file) and exec that.
-        val command = "cp '${helper.absolutePath}' $TMP_HELPER && chmod 755 $TMP_HELPER && " +
+        val staged = "cp '${helper.absolutePath}' $TMP_HELPER && chmod 755 $TMP_HELPER && " +
             "exec $TMP_HELPER"
 
+        if (launch(listOf("su", "-c", staged), null)) {
+            return true
+        }
+
+        // Some su builds hand out a root shell on stdin instead of taking -c.
+        Log.i(TAG, "su -c gave no READY line, retrying with a root shell")
+        return launch(listOf("su"), "$staged\n")
+    }
+
+    /**
+     * Starts the helper and waits for it to report the node it opened.
+     * [stdinCommand] is written to the child before any rumble data, for the
+     * su variants that run whatever arrives on stdin.
+     */
+    private fun launch(argv: List<String>, stdinCommand: String?): Boolean {
         val started = try {
-            ProcessBuilder("su", "-c", command)
+            ProcessBuilder(argv)
                 .redirectErrorStream(true)
                 .start()
         } catch (e: Exception) {
-            Log.w(TAG, "su unavailable: $e")
+            Log.w(TAG, "cannot run ${argv.first()}: $e")
             return false
         }
 
-        process = started
-        output = started.outputStream
-        startLogForwarder(started)
-        return true
-    }
-
-    /** Surfaces helper diagnostics in logcat and notices when it goes away. */
-    private fun startLogForwarder(started: Process) {
+        val ready = CountDownLatch(1)
         Thread {
             try {
                 started.inputStream.bufferedReader().forEachLine { line ->
                     Log.i(TAG, "helper: $line")
+                    if (line.startsWith("READY")) {
+                        ready.countDown()
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "helper output closed: $e")
             }
 
-            synchronized(this) {
+            Log.i(TAG, "helper exited")
+            synchronized(this@HdRumbleHidraw) {
                 if (process === started) {
                     process = null
                     output = null
                     available = false
                 }
             }
-            Log.i(TAG, "helper exited")
         }.apply {
             name = "HdRumbleHidraw-log"
             isDaemon = true
             start()
         }
+
+        val stream = started.outputStream
+        if (stdinCommand != null) {
+            try {
+                stream.write(stdinCommand.toByteArray())
+                stream.flush()
+            } catch (e: Exception) {
+                Log.w(TAG, "cannot write the command to su: $e")
+            }
+        }
+
+        val readySeen = try {
+            ready.await(READY_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: InterruptedException) {
+            Log.w(TAG, "interrupted while waiting for the helper: $e")
+            false
+        }
+
+        if (!readySeen) {
+            Log.w(TAG, "helper not ready, command=${argv.drop(1).joinToString(" ")}")
+            try {
+                stream.close()
+            } catch (_: Exception) {
+            }
+            started.destroy()
+            return false
+        }
+
+        synchronized(this) {
+            process = started
+            output = stream
+            available = true
+        }
+        return true
     }
 
     fun isAvailable(): Boolean = available
