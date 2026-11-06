@@ -1194,6 +1194,11 @@ class SettingsFragmentPresenter(
             val hdRumbleSetting = object : AbstractBooleanSetting {
                 override val key = "hd_rumble_enabled"
 
+                // This is a device-level toggle, not a per-game setting. Force it
+                // editable so it can be flipped while emulation is running.
+                override var global: Boolean = true
+                override val isRuntimeModifiable: Boolean = true
+
                 override fun getBoolean(needsGlobal: Boolean): Boolean =
                     NativeConfig.getBoolean(key, needsGlobal)
 
