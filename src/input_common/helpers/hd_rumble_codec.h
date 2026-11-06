@@ -23,6 +23,8 @@ u16 EncodeHighFrequency(f32 frequency);
 u8 EncodeLowFrequency(f32 frequency);
 
 /// Build a 10-byte output report (0x10 + counter + left/right rumble).
-std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, u8 counter);
+/// [boost] lifts quiet amplitudes to compensate for weaker third-party LRAs.
+std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, u8 counter,
+                               bool boost = false);
 
 } // namespace InputCommon::HdRumble

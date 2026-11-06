@@ -176,10 +176,14 @@ object HdRumbleHidraw {
         val stream = output ?: return false
 
         // The controller holds the last commanded state, so an unchanged
-        // packet only needs an occasional refresh to stay alive. Skipping
-        // the duplicates keeps the Bluetooth link from dropping reports.
+        // payload only needs an occasional refresh to stay alive. Skipping the
+        // duplicates keeps the Bluetooth link from dropping reports. Byte 1 is
+        // the rolling counter and always differs, so compare the rumble bytes.
         val now = System.currentTimeMillis()
-        if (packet.contentEquals(lastPacket) && now - lastWriteAt < KEEP_ALIVE_MS) {
+        val previous = lastPacket
+        val samePayload = previous != null && previous.size == packet.size &&
+            (2 until packet.size).all { previous[it] == packet[it] }
+        if (samePayload && now - lastWriteAt < KEEP_ALIVE_MS) {
             return true
         }
 

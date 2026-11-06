@@ -725,6 +725,7 @@
     <string name="input_overlay">输入叠加层</string>
     <string name="vibration">震动</string>
     <string name="hd_rumble">HD 震动（hidraw）</string>
+    <string name="hd_rumble_boost">HD 震动增强（弱马达补偿）</string>
     <string name="vibration_strength">震动强度</string>
     <string name="profile">用户配置</string>
     <string name="create_new_profile">新建配置文件</string>

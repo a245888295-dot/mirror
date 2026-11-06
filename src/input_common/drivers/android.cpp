@@ -369,7 +369,8 @@ void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
                   vibration.high_frequency);
 
         if (Settings::values.hd_rumble_enabled.GetValue()) {
-            const auto packet = HdRumble::BuildPacket(vibration, hd_rumble_counter);
+            const auto packet = HdRumble::BuildPacket(vibration, hd_rumble_counter,
+                                                      Settings::values.hd_rumble_boost.GetValue());
             hd_rumble_counter = static_cast<u8>((hd_rumble_counter + 1) & 0x0F);
 
             jbyteArray array = env->NewByteArray(static_cast<jsize>(packet.size()));

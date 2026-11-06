@@ -98,7 +98,8 @@ u8 EncodeLowFrequency(f32 frequency) {
     return static_cast<u8>(new_frequency - 0x40);
 }
 
-std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, u8 counter) {
+std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, u8 counter,
+                               bool boost) {
     std::array<u8, 10> packet{};
 
     packet[0] = 0x10;
@@ -117,18 +118,26 @@ std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, 
         return packet;
     }
 
-    const f32 clamp_amplitude =
-        1.0f / (std::max)(1.0f, vibration.high_amplitude + vibration.low_amplitude);
+    f32 low_amplitude = vibration.low_amplitude;
+    f32 high_amplitude = vibration.high_amplitude;
+    if (boost) {
+        // Third-party pads lose quiet textures first: lift small amplitudes
+        // more than large ones, then apply a little overall gain.
+        low_amplitude = std::pow(low_amplitude, 0.75f) * 1.3f;
+        high_amplitude = std::pow(high_amplitude, 0.75f) * 1.3f;
+    }
+
+    const f32 clamp_amplitude = 1.0f / (std::max)(1.0f, high_amplitude + low_amplitude);
 
     const u16 high_frequency = EncodeHighFrequency(vibration.high_frequency);
-    const u8 high_amplitude = EncodeHighAmplitude(vibration.high_amplitude * clamp_amplitude);
+    const u8 high_amplitude_code = EncodeHighAmplitude(high_amplitude * clamp_amplitude);
     const u8 low_frequency = EncodeLowFrequency(vibration.low_frequency);
-    const u16 low_amplitude = EncodeLowAmplitude(vibration.low_amplitude * clamp_amplitude);
+    const u16 low_amplitude_code = EncodeLowAmplitude(low_amplitude * clamp_amplitude);
 
     packet[2] = static_cast<u8>(high_frequency & 0xFF);
-    packet[3] = static_cast<u8>(high_amplitude | ((high_frequency >> 8) & 0x01));
-    packet[4] = static_cast<u8>(low_frequency | ((low_amplitude >> 8) & 0x80));
-    packet[5] = static_cast<u8>(low_amplitude & 0xFF);
+    packet[3] = static_cast<u8>(high_amplitude_code | ((high_frequency >> 8) & 0x01));
+    packet[4] = static_cast<u8>(low_frequency | ((low_amplitude_code >> 8) & 0x80));
+    packet[5] = static_cast<u8>(low_amplitude_code & 0xFF);
 
     // Duplicate for the right motor until per-side amplitudes are wired through.
     packet[6] = packet[2];
