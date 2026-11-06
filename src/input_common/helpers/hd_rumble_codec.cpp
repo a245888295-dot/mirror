@@ -87,14 +87,20 @@ u16 EncodeLowAmplitude(f32 amplitude) {
 }
 
 u16 EncodeHighFrequency(f32 frequency) {
+    // The high band only covers 81.751-1252.572 Hz. Encoding anything below
+    // that underflows the byte pair and lands on a random high frequency,
+    // which is audible as noise, so clamp into the representable span.
+    const f32 clamped = std::clamp(frequency, 81.751f, 1252.572f);
     const u8 new_frequency =
-        static_cast<u8>(std::clamp(std::log2(frequency / 10.0f) * 32.0f, 0.0f, 255.0f));
+        static_cast<u8>(std::clamp(std::round(std::log2(clamped / 10.0f) * 32.0f), 0.0f, 255.0f));
     return static_cast<u16>((new_frequency - 0x60) * 4);
 }
 
 u8 EncodeLowFrequency(f32 frequency) {
+    // The low band covers 40.875-626.286 Hz.
+    const f32 clamped = std::clamp(frequency, 40.875f, 626.286f);
     const u8 new_frequency =
-        static_cast<u8>(std::clamp(std::log2(frequency / 10.0f) * 32.0f, 0.0f, 255.0f));
+        static_cast<u8>(std::clamp(std::round(std::log2(clamped / 10.0f) * 32.0f), 0.0f, 255.0f));
     return static_cast<u8>(new_frequency - 0x40);
 }
 
