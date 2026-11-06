@@ -90,6 +90,9 @@ class YuzuPhysicalDevice(
     }
 
     override fun vibrateHdRaw(data: ByteArray) {
+        if (!HdRumbleHidraw.isAvailable()) {
+            HdRumbleHidraw.initialize()
+        }
         if (HdRumbleHidraw.isAvailable() && HdRumbleHidraw.write(data)) {
             return
         }
