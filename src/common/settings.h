@@ -796,6 +796,8 @@ struct Values {
 
     SwitchableSetting<bool> vibration_enabled{linkage, true, "vibration_enabled",
                                               Category::Controls};
+    SwitchableSetting<bool> hd_rumble_enabled{linkage, true, "hd_rumble_enabled",
+                                              Category::Controls};
     SwitchableSetting<bool> enable_accurate_vibrations{linkage, false, "enable_accurate_vibrations",
                                                        Category::Controls};
 

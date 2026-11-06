@@ -11,6 +11,7 @@
 #include "common/android/android_common.h"
 #include "common/android/id_cache.h"
 #include "common/logging.h"
+#include "common/settings.h"
 #include "input_common/drivers/android.h"
 #include "input_common/helpers/hd_rumble_codec.h"
 
@@ -369,14 +370,21 @@ void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
                       vibration.high_amplitude, vibration.high_frequency);
         }
 
-        const auto packet = HdRumble::BuildPacket(vibration, hd_rumble_counter);
-        hd_rumble_counter = static_cast<u8>((hd_rumble_counter + 1) & 0x0F);
+        if (Settings::values.hd_rumble_enabled.GetValue()) {
+            const auto packet = HdRumble::BuildPacket(vibration, hd_rumble_counter);
+            hd_rumble_counter = static_cast<u8>((hd_rumble_counter + 1) & 0x0F);
 
-        jbyteArray array = env->NewByteArray(static_cast<jsize>(packet.size()));
-        env->SetByteArrayRegion(array, 0, static_cast<jsize>(packet.size()),
-                                reinterpret_cast<const jbyte*>(packet.data()));
-        env->CallVoidMethod(device->second, Common::Android::GetYuzuDeviceVibrateHdRaw(), array);
-        env->DeleteLocalRef(array);
+            jbyteArray array = env->NewByteArray(static_cast<jsize>(packet.size()));
+            env->SetByteArrayRegion(array, 0, static_cast<jsize>(packet.size()),
+                                    reinterpret_cast<const jbyte*>(packet.data()));
+            env->CallVoidMethod(device->second, Common::Android::GetYuzuDeviceVibrateHdRaw(),
+                                array);
+            env->DeleteLocalRef(array);
+        } else {
+            env->CallVoidMethod(device->second, Common::Android::GetYuzuDeviceVibrateHd(),
+                                vibration.low_amplitude, vibration.low_frequency,
+                                vibration.high_amplitude, vibration.high_frequency);
+        }
     }
 }
 

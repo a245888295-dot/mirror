@@ -724,6 +724,7 @@
     <string name="use_system_vibrator">使用系统马达</string>
     <string name="input_overlay">输入叠加层</string>
     <string name="vibration">震动</string>
+    <string name="hd_rumble">HD 震动（hidraw）</string>
     <string name="vibration_strength">震动强度</string>
     <string name="profile">用户配置</string>
     <string name="create_new_profile">新建配置文件</string>

@@ -749,6 +749,7 @@
     <string name="use_system_vibrator">Use system vibrator</string>
     <string name="input_overlay">Input overlay</string>
     <string name="vibration">Vibration</string>
+    <string name="hd_rumble">HD rumble (hidraw)</string>
     <string name="vibration_strength">Vibration strength</string>
     <string name="profile">Profile</string>
     <string name="create_new_profile">Create new profile</string>

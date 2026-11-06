@@ -34,13 +34,14 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install NDK, CMake and build tools
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install \
+          SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMGR="$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          echo "Using $SDKMGR"
+          echo "$(dirname "$SDKMGR")" >> "$GITHUB_PATH"
+          yes | "$SDKMGR" --licenses > /dev/null || true
+          "$SDKMGR" --install \
             "platforms;android-36" \
             "build-tools;35.0.0" \
             "ndk;28.2.13676358" \

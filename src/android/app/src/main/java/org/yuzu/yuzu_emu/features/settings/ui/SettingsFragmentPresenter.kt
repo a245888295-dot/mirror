@@ -1191,6 +1191,25 @@ class SettingsFragmentPresenter(
             }
             add(SwitchSetting(vibrationEnabledSetting, R.string.vibration))
 
+            val hdRumbleSetting = object : AbstractBooleanSetting {
+                override val key = "hd_rumble_enabled"
+
+                override fun getBoolean(needsGlobal: Boolean): Boolean =
+                    NativeConfig.getBoolean(key, needsGlobal)
+
+                override fun setBoolean(value: Boolean) {
+                    NativeConfig.setBoolean(key, value)
+                }
+
+                override val defaultValue = true
+
+                override fun getValueAsString(needsGlobal: Boolean): String =
+                    getBoolean(needsGlobal).toString()
+
+                override fun reset() = setBoolean(defaultValue)
+            }
+            add(SwitchSetting(hdRumbleSetting, R.string.hd_rumble))
+
             val useSystemVibratorSetting = object : AbstractBooleanSetting {
                 override val key = ""
 
