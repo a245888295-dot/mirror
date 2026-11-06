@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <set>
+#include <thread>
 #include <common/settings_input.h>
 #include <common/thread.h>
 #include <jni.h>
@@ -361,21 +362,27 @@ PadIdentifier Android::GetIdentifier(const std::string& guid, size_t port) const
 
 void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
     VibrationRequest request = vibration_queue.PopWait(token);
+
+    // The console samples rumble at 60 Hz and always sends the freshest value.
+    // Games (and our input pipeline) can produce several times that rate, and
+    // the Bluetooth link silently drops the excess, which shreds the texture of
+    // layered effects. Collapse everything that queued up instead of dropping
+    // individual reports, then pace the output to the console cadence.
+    VibrationRequest newest;
+    while (vibration_queue.Pop(newest)) {
+        request = std::move(newest);
+    }
+
+    constexpr auto rumble_interval = std::chrono::milliseconds(16);
+    const auto elapsed = std::chrono::steady_clock::now() - last_rumble_send;
+    if (elapsed < rumble_interval) {
+        std::this_thread::sleep_for(rumble_interval - elapsed);
+    }
+    last_rumble_send = std::chrono::steady_clock::now();
+
     auto device = input_devices.find(request.identifier);
     if (device != input_devices.end()) {
         const auto& vibration = request.vibration;
-
-        // The console pushes rumble reports at 60 Hz. Games (and our own input
-        // pipeline) can produce 3-4x that, and the Bluetooth link silently
-        // drops the excess, which shreds the texture of layered effects.
-        // A stop request always goes through so the motors cannot latch on.
-        const bool stopping =
-            vibration.low_amplitude <= 0.0f && vibration.high_amplitude <= 0.0f;
-        const auto now = std::chrono::steady_clock::now();
-        if (!stopping && now - last_rumble_send < std::chrono::milliseconds(16)) {
-            return;
-        }
-        last_rumble_send = now;
         // Trace what the game asks for at ~4 Hz: enough to diagnose an effect
         // without flooding the log with one line per report.
         if ((hd_rumble_counter & 0x0F) == 0) {
