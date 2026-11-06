@@ -26,10 +26,20 @@ object HdRumbleHidraw {
     private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 5000L
     private const val READY_TIMEOUT_MS = 10_000L
+    private const val KEEP_ALIVE_MS = 100L
+
+    /// Output report 0x01 carrying subcommand 0x48 (enable vibration).
+    private val ENABLE_VIBRATION = byteArrayOf(
+        0x01, 0x00,
+        0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40,
+        0x48, 0x01
+    )
 
     private var process: Process? = null
     private var output: OutputStream? = null
     private var lastAttempt = 0L
+    private var lastPacket: ByteArray? = null
+    private var lastWriteAt = 0L
 
     @Volatile
     private var available = false
@@ -146,6 +156,15 @@ object HdRumbleHidraw {
             output = stream
             available = true
         }
+
+        // A fresh controller ignores rumble reports until the host enables
+        // vibration through subcommand 0x48.
+        try {
+            stream.write(ENABLE_VIBRATION)
+            stream.flush()
+        } catch (e: Exception) {
+            Log.w(TAG, "cannot enable vibration: $e")
+        }
         return true
     }
 
@@ -155,9 +174,20 @@ object HdRumbleHidraw {
     fun write(packet: ByteArray): Boolean {
         if (!available) return false
         val stream = output ?: return false
+
+        // The controller holds the last commanded state, so an unchanged
+        // packet only needs an occasional refresh to stay alive. Skipping
+        // the duplicates keeps the Bluetooth link from dropping reports.
+        val now = System.currentTimeMillis()
+        if (packet.contentEquals(lastPacket) && now - lastWriteAt < KEEP_ALIVE_MS) {
+            return true
+        }
+
         return try {
             stream.write(packet)
             stream.flush()
+            lastPacket = packet.copyOf()
+            lastWriteAt = now
             true
         } catch (e: Exception) {
             Log.w(TAG, "write failed: $e")
@@ -177,5 +207,7 @@ object HdRumbleHidraw {
         output = null
         available = false
         lastAttempt = 0L
+        lastPacket = null
+        lastWriteAt = 0L
     }
 }
