@@ -94,6 +94,8 @@ static jmethodID s_yuzu_input_device_get_guid;
 static jmethodID s_yuzu_input_device_get_port;
 static jmethodID s_yuzu_input_device_get_supports_vibration;
 static jmethodID s_yuzu_input_device_vibrate;
+static jmethodID s_yuzu_input_device_vibrate_hd;
+static jmethodID s_yuzu_input_device_vibrate_hd_raw;
 static jmethodID s_yuzu_input_device_get_axes;
 static jmethodID s_yuzu_input_device_has_keys;
 
@@ -406,6 +408,14 @@ namespace Common::Android {
         return s_yuzu_input_device_vibrate;
     }
 
+    jmethodID GetYuzuDeviceVibrateHd() {
+        return s_yuzu_input_device_vibrate_hd;
+    }
+
+    jmethodID GetYuzuDeviceVibrateHdRaw() {
+        return s_yuzu_input_device_vibrate_hd_raw;
+    }
+
     jmethodID GetYuzuDeviceGetAxes() {
         return s_yuzu_input_device_get_axes;
     }
@@ -624,6 +634,10 @@ void Initialize(JavaVM* vm, JNIEnv *env) {
         env->GetMethodID(yuzu_input_device_interface, "getSupportsVibration", "()Z");
     s_yuzu_input_device_vibrate = env->GetMethodID(yuzu_input_device_interface, "vibrate",
                                                    "(F)V");
+    s_yuzu_input_device_vibrate_hd =
+        env->GetMethodID(yuzu_input_device_interface, "vibrateHd", "(FFFF)V");
+    s_yuzu_input_device_vibrate_hd_raw =
+        env->GetMethodID(yuzu_input_device_interface, "vibrateHdRaw", "([B)V");
     s_yuzu_input_device_get_axes =
         env->GetMethodID(yuzu_input_device_interface, "getAxes", "()[Ljava/lang/Integer;");
     s_yuzu_input_device_has_keys =

@@ -146,6 +146,9 @@ private:
     /// Queue of vibration request to controllers
     Common::SPSCQueue<VibrationRequest> vibration_queue;
     std::jthread vibration_thread;
+
+    /// Rolling counter carried by HD rumble output reports.
+    u8 hd_rumble_counter = 0;
 };
 
 } // namespace InputCommon

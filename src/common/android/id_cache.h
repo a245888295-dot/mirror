@@ -112,6 +112,8 @@ jmethodID GetYuzuDeviceGetGUID();
 jmethodID GetYuzuDeviceGetPort();
 jmethodID GetYuzuDeviceGetSupportsVibration();
 jmethodID GetYuzuDeviceVibrate();
+jmethodID GetYuzuDeviceVibrateHd();
+jmethodID GetYuzuDeviceVibrateHdRaw();
 jmethodID GetYuzuDeviceGetAxes();
 jmethodID GetYuzuDeviceHasKeys();
 jmethodID GetAddNetPlayMessage();

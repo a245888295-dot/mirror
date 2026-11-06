@@ -21,6 +21,8 @@ add_library(input_common STATIC
     drivers/virtual_amiibo.h
     drivers/virtual_gamepad.cpp
     drivers/virtual_gamepad.h
+    helpers/hd_rumble_codec.cpp
+    helpers/hd_rumble_codec.h
     helpers/stick_from_buttons.cpp
     helpers/stick_from_buttons.h
     helpers/touch_from_buttons.cpp

@@ -36,3 +36,12 @@ endif()
 set(CPACK_PACKAGE_EXECUTABLES ${CPACK_PACKAGE_EXECUTABLES} yuzu-android)
 
 target_link_options(yuzu-android PRIVATE "-Wl,-Bsymbolic")
+
+# Small root helper that streams HD rumble output reports to a hidraw node.
+# It is packaged as lib*.so so Gradle extracts it into nativeLibraryDir,
+# where `su` can execute it.
+add_executable(hidraw_sender hidraw_sender.c)
+set_target_properties(hidraw_sender PROPERTIES
+    PREFIX "lib"
+    SUFFIX ".so"
+)

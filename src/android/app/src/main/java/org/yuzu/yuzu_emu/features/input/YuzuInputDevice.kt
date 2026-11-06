@@ -21,6 +21,26 @@ interface YuzuInputDevice {
 
     fun vibrate(intensity: Float)
 
+    fun vibrateHd(
+        lowAmplitude: Float,
+        lowFrequency: Float,
+        highAmplitude: Float,
+        highFrequency: Float
+    ) {
+        vibrate((lowAmplitude + highAmplitude) / 2f)
+    }
+
+    /**
+     * Raw 0x10 HD rumble output report, for controllers that only accept
+     * hidraw writes. The default falls back to the decoded amplitude.
+     */
+    fun vibrateHdRaw(data: ByteArray) {
+        if (data.size < 10) return
+        val high = (data[3].toInt() and 0xFF) / 100f
+        val low = (data[5].toInt() and 0xFF) / 100f
+        vibrate((high + low) / 2f)
+    }
+
     fun getAxes(): Array<Int> = arrayOf()
     fun hasKeys(keys: IntArray): BooleanArray = BooleanArray(0)
 }
@@ -34,6 +54,10 @@ class YuzuPhysicalDevice(
         YuzuVibrator.getSystemVibrator()
     } else {
         YuzuVibrator.getControllerVibrator(device)
+    }
+
+    init {
+        HdRumbleHidraw.initialize()
     }
 
     override fun getName(): String {
@@ -54,6 +78,25 @@ class YuzuPhysicalDevice(
 
     override fun vibrate(intensity: Float) {
         vibrator.vibrate(intensity)
+    }
+
+    override fun vibrateHd(
+        lowAmplitude: Float,
+        lowFrequency: Float,
+        highAmplitude: Float,
+        highFrequency: Float
+    ) {
+        vibrator.vibrateHd(lowAmplitude, lowFrequency, highAmplitude, highFrequency)
+    }
+
+    override fun vibrateHdRaw(data: ByteArray) {
+        if (HdRumbleHidraw.isAvailable() && HdRumbleHidraw.write(data)) {
+            return
+        }
+        if (data.size < 10) return
+        val high = (data[3].toInt() and 0xFF) / 100f
+        val low = (data[5].toInt() and 0xFF) / 100f
+        vibrator.vibrate((high + low) / 2f)
     }
 
     override fun getAxes(): Array<Int> = device.motionRanges.map { it.axis }.toTypedArray()
@@ -89,5 +132,23 @@ class YuzuInputOverlayDevice(
         if (vibration) {
             vibrator.vibrate(intensity)
         }
+    }
+
+    override fun vibrateHd(
+        lowAmplitude: Float,
+        lowFrequency: Float,
+        highAmplitude: Float,
+        highFrequency: Float
+    ) {
+        if (vibration) {
+            vibrator.vibrateHd(lowAmplitude, lowFrequency, highAmplitude, highFrequency)
+        }
+    }
+
+    override fun vibrateHdRaw(data: ByteArray) {
+        if (!vibration || data.size < 10) return
+        val high = (data[3].toInt() and 0xFF) / 100f
+        val low = (data[5].toInt() and 0xFF) / 100f
+        vibrator.vibrate((high + low) / 2f)
     }
 }
