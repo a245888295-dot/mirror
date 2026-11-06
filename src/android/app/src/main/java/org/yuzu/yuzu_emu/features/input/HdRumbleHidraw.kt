@@ -28,13 +28,6 @@ object HdRumbleHidraw {
     private const val READY_TIMEOUT_MS = 10_000L
     private const val KEEP_ALIVE_MS = 100L
 
-    /// Output report 0x01 carrying subcommand 0x48 (enable vibration).
-    private val ENABLE_VIBRATION = byteArrayOf(
-        0x01, 0x00,
-        0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40,
-        0x48, 0x01
-    )
-
     private var process: Process? = null
     private var output: OutputStream? = null
     private var lastAttempt = 0L
@@ -157,14 +150,9 @@ object HdRumbleHidraw {
             available = true
         }
 
-        // A fresh controller ignores rumble reports until the host enables
-        // vibration through subcommand 0x48.
-        try {
-            stream.write(ENABLE_VIBRATION)
-            stream.flush()
-        } catch (e: Exception) {
-            Log.w(TAG, "cannot enable vibration: $e")
-        }
+        // Every write must be exactly one 10-byte output report: the helper
+        // reads fixed-size frames, so anything else would shift the stream and
+        // turn all later reports into garbage.
         return true
     }
 
