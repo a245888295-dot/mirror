@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <set>
 #include <common/threadsafe_queue.h>
 #include <jni.h>
@@ -149,6 +150,9 @@ private:
 
     /// Rolling counter carried by HD rumble output reports.
     u8 hd_rumble_counter = 0;
+
+    /// Last time a rumble report was sent, used to keep the 60 Hz console rate.
+    std::chrono::steady_clock::time_point last_rumble_send{};
 };
 
 } // namespace InputCommon

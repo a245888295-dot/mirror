@@ -364,6 +364,18 @@ void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
     auto device = input_devices.find(request.identifier);
     if (device != input_devices.end()) {
         const auto& vibration = request.vibration;
+
+        // The console pushes rumble reports at 60 Hz. Games (and our own input
+        // pipeline) can produce 3-4x that, and the Bluetooth link silently
+        // drops the excess, which shreds the texture of layered effects.
+        // A stop request always goes through so the motors cannot latch on.
+        const bool stopping =
+            vibration.low_amplitude <= 0.0f && vibration.high_amplitude <= 0.0f;
+        const auto now = std::chrono::steady_clock::now();
+        if (!stopping && now - last_rumble_send < std::chrono::milliseconds(16)) {
+            return;
+        }
+        last_rumble_send = now;
         // Trace what the game asks for at ~4 Hz: enough to diagnose an effect
         // without flooding the log with one line per report.
         if ((hd_rumble_counter & 0x0F) == 0) {
