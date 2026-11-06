@@ -281,6 +281,14 @@ android {
     }
 }
 
+// The Kotlin sources import org.libsdl.app.*, which the CMake configure step
+// copies into externals/generated/sdl. Compilation must not start before that
+// copy exists, or a parallel build fails with "Unresolved reference: libsdl".
+tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }
+    .configureEach {
+        dependsOn(tasks.matching { it.name.startsWith("configureCMake") })
+    }
+
 idea {
     module {
         // Inclusion to exclude build/ dir from non-Android
