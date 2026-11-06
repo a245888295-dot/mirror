@@ -21,6 +21,7 @@ object HdRumbleHidraw {
     private const val TAG = "HdRumbleHidraw"
     private const val HIDRAW_PATH = "/dev/hidraw0"
     private const val HELPER_NAME = "libhidraw_sender.so"
+    private const val TMP_HELPER = "/data/local/tmp/hidraw_sender"
     private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 3000L
 
@@ -50,13 +51,19 @@ object HdRumbleHidraw {
         val helper = File(YuzuApplication.appContext.applicationInfo.nativeLibraryDir, HELPER_NAME)
         Log.d(TAG, "helper path=${helper.absolutePath} exists=${helper.exists()}")
         if (!helper.exists()) return false
+
+        // SELinux forbids executing binaries inside the app's nativeLibraryDir,
+        // so stage a copy in /data/local/tmp (shell_data_file, executable by su)
+        // and run that instead.
+        val cmd = "cp '${helper.absolutePath}' $TMP_HELPER 2>/dev/null; " +
+            "chmod 755 $TMP_HELPER 2>/dev/null; $TMP_HELPER $HIDRAW_PATH"
         return try {
-            val proc = ProcessBuilder("su", "-c", "${helper.absolutePath} $HIDRAW_PATH")
+            val proc = ProcessBuilder("su", "-c", cmd)
                 .redirectErrorStream(true)
                 .start()
             process = proc
             output = proc.outputStream
-            Log.d(TAG, "helper started")
+            Log.d(TAG, "helper started via $TMP_HELPER")
             true
         } catch (e: Exception) {
             Log.w(TAG, "helper start failed: $e")
