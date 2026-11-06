@@ -364,9 +364,13 @@ void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
     auto device = input_devices.find(request.identifier);
     if (device != input_devices.end()) {
         const auto& vibration = request.vibration;
-        LOG_DEBUG(Input, "HD rumble: loAmp={:.3f} loFreq={:.1f} hiAmp={:.3f} hiFreq={:.1f}",
-                  vibration.low_amplitude, vibration.low_frequency, vibration.high_amplitude,
-                  vibration.high_frequency);
+        // Trace what the game asks for at ~4 Hz: enough to diagnose an effect
+        // without flooding the log with one line per report.
+        if ((hd_rumble_counter & 0x0F) == 0) {
+            LOG_INFO(Input, "HD rumble: loAmp={:.3f} loFreq={:.1f} hiAmp={:.3f} hiFreq={:.1f}",
+                     vibration.low_amplitude, vibration.low_frequency,
+                     vibration.high_amplitude, vibration.high_frequency);
+        }
 
         if (Settings::values.hd_rumble_enabled.GetValue()) {
             const auto packet = HdRumble::BuildPacket(vibration, hd_rumble_counter,

@@ -127,10 +127,16 @@ std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, 
     f32 low_amplitude = vibration.low_amplitude;
     f32 high_amplitude = vibration.high_amplitude;
     if (boost) {
-        // Third-party pads lose quiet textures first: lift small amplitudes
-        // more than large ones, then apply a little overall gain.
-        low_amplitude = std::pow(low_amplitude, 0.75f) * 1.3f;
-        high_amplitude = std::pow(high_amplitude, 0.75f) * 1.3f;
+        // Third-party pads lose quiet textures first, and their actuators fall
+        // off well before the high band does: lift small amplitudes more than
+        // large ones, then add extra gain where the "electric" style effects
+        // live (350-800 Hz) so they stop feeling like a faint buzz.
+        low_amplitude = std::pow(low_amplitude, 0.65f) * 1.5f;
+        high_amplitude = std::pow(high_amplitude, 0.65f) * 1.5f;
+        const f32 high_frequency = vibration.high_frequency;
+        if (high_frequency >= 350.0f && high_frequency <= 800.0f) {
+            high_amplitude *= 1.35f;
+        }
     }
 
     const f32 clamp_amplitude = 1.0f / (std::max)(1.0f, high_amplitude + low_amplitude);
