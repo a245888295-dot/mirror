@@ -12,7 +12,7 @@
 
 #define REPORT_SIZE 10
 
-/* HID_ID in /sys/class/hidraw/*\/device/uevent looks like
+/* The HID_ID line inside a hidraw node's device/uevent looks like
  * "0005:0000057E:00002009" (Bluetooth) or "0003:0000057E:00002009" (USB),
  * where the middle field is the vendor id. */
 static const char NINTENDO_VID[] = "0000057E";
