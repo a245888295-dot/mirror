@@ -366,17 +366,18 @@ void Android::SendVibrations(JNIEnv* env, std::stop_token token) {
     // The console samples rumble at 60 Hz and always sends the freshest value.
     // Games (and our input pipeline) can produce several times that rate, and
     // the Bluetooth link silently drops the excess, which shreds the texture of
-    // layered effects. Collapse everything that queued up instead of dropping
-    // individual reports, then pace the output to the console cadence.
-    VibrationRequest newest;
-    while (vibration_queue.Pop(newest)) {
-        request = std::move(newest);
-    }
-
+    // layered effects.
     constexpr auto rumble_interval = std::chrono::milliseconds(16);
     const auto elapsed = std::chrono::steady_clock::now() - last_rumble_send;
     if (elapsed < rumble_interval) {
         std::this_thread::sleep_for(rumble_interval - elapsed);
+    }
+
+    // Collapse the backlog only after pacing: draining before the sleep would
+    // send stale values and let the queue grow without bound.
+    VibrationRequest newest;
+    while (vibration_queue.Pop(newest)) {
+        request = std::move(newest);
     }
     last_rumble_send = std::chrono::steady_clock::now();
 

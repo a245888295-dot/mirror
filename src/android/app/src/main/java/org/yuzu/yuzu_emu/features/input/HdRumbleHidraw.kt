@@ -26,10 +26,20 @@ object HdRumbleHidraw {
     private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 5000L
     private const val READY_TIMEOUT_MS = 10_000L
+    private const val IDLE_CHECK_MS = 100L
+    private const val IDLE_STOP_MS = 300L
+
+    /// Neutral 0x10 report: zero amplitude, 160 Hz / 320 Hz.
+    private val STOP_PACKET = byteArrayOf(
+        0x10, 0x00,
+        0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40
+    )
 
     private var process: Process? = null
     private var output: OutputStream? = null
     private var lastAttempt = 0L
+    private var lastWriteAt = 0L
+    private var lastWasStop = true
 
     @Volatile
     private var available = false
@@ -145,12 +155,54 @@ object HdRumbleHidraw {
             process = started
             output = stream
             available = true
+            lastWriteAt = System.currentTimeMillis()
+            lastWasStop = true
         }
+        startIdleWatchdog(started)
 
         // Every write must be exactly one 10-byte output report: the helper
         // reads fixed-size frames, so anything else would shift the stream and
         // turn all later reports into garbage.
         return true
+    }
+
+    private fun isStopPacket(packet: ByteArray): Boolean =
+        packet.size >= 6 &&
+            packet[2] == 0.toByte() && packet[3] == 1.toByte() &&
+            packet[4] == 0x40.toByte() && packet[5] == 0x40.toByte()
+
+    /**
+     * The controller latches the last report, so a game that stops sending while
+     * a vibration is active would leave the motors running. Push a neutral report
+     * once the stream has been quiet for a moment.
+     */
+    private fun startIdleWatchdog(started: Process) {
+        Thread {
+            while (true) {
+                Thread.sleep(IDLE_CHECK_MS)
+                var detached = false
+                synchronized(this) {
+                    if (process !== started || !available) {
+                        detached = true
+                    } else if (!lastWasStop &&
+                        System.currentTimeMillis() - lastWriteAt > IDLE_STOP_MS
+                    ) {
+                        try {
+                            output?.write(STOP_PACKET)
+                            output?.flush()
+                            lastWasStop = true
+                        } catch (e: Exception) {
+                            Log.w(TAG, "idle stop failed: $e")
+                        }
+                    }
+                }
+                if (detached) return@Thread
+            }
+        }.apply {
+            name = "HdRumbleHidraw-idle"
+            isDaemon = true
+            start()
+        }
     }
 
     fun isAvailable(): Boolean = available
@@ -163,6 +215,8 @@ object HdRumbleHidraw {
         return try {
             stream.write(packet)
             stream.flush()
+            lastWriteAt = System.currentTimeMillis()
+            lastWasStop = isStopPacket(packet)
             true
         } catch (e: Exception) {
             Log.w(TAG, "write failed: $e")
