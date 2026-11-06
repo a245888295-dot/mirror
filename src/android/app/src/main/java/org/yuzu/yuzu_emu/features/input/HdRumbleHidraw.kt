@@ -67,7 +67,7 @@ object HdRumbleHidraw {
                 .start()
             process = proc
             output = proc.outputStream
-            Log.d(TAG, "helper started, pid=${proc.pid()}")
+            Log.d(TAG, "helper started")
             true
         } catch (e: Exception) {
             Log.w(TAG, "helper start failed: $e")
