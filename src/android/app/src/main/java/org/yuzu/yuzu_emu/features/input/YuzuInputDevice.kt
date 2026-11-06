@@ -57,7 +57,7 @@ class YuzuPhysicalDevice(
     }
 
     init {
-        HdRumbleHidraw.initialize()
+        HdRumbleHidraw.initialize(device.vendorId)
     }
 
     override fun getName(): String {
@@ -91,7 +91,7 @@ class YuzuPhysicalDevice(
 
     override fun vibrateHdRaw(data: ByteArray) {
         if (!HdRumbleHidraw.isAvailable()) {
-            HdRumbleHidraw.initialize()
+            HdRumbleHidraw.initialize(device.vendorId)
         }
         if (HdRumbleHidraw.isAvailable() && HdRumbleHidraw.write(data)) {
             return

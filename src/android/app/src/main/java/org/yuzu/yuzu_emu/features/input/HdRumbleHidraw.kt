@@ -21,7 +21,7 @@ object HdRumbleHidraw {
     private const val TAG = "HdRumbleHidraw"
     private const val HIDRAW_PATH = "/dev/hidraw0"
     private const val HELPER_NAME = "libhidraw_sender.so"
-    private const val NINTENDO_VID = "057E"
+    private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 3000L
 
     private var process: Process? = null
@@ -29,32 +29,21 @@ object HdRumbleHidraw {
     private var available = false
     private var lastAttempt = 0L
 
+    /**
+     * @param vendorId InputDevice vendor of the controller. Only Nintendo
+     *                 devices are handled; everything else keeps using the
+     *                 Android vibrator.
+     */
     @Synchronized
-    fun initialize() {
+    fun initialize(vendorId: Int) {
         if (available) return
+        if (vendorId != NINTENDO_VID) return
         val now = System.currentTimeMillis()
         if (now - lastAttempt < RETRY_INTERVAL_MS) return
         lastAttempt = now
 
-        val present = isNintendoControllerPresent()
-        Log.d(TAG, "initialize: nintendoController=$present")
-        if (!present) return
-
         available = startHelper()
         Log.d(TAG, "initialize: helperStarted=$available")
-    }
-
-    private fun isNintendoControllerPresent(): Boolean {
-        val uevent = File("/sys/class/hidraw/hidraw0/device/uevent")
-        if (!uevent.exists()) return false
-        return try {
-            uevent.readLines().any { line ->
-                line.startsWith("HID_ID=") && line.contains(NINTENDO_VID, ignoreCase = true)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "uevent read failed: $e")
-            false
-        }
     }
 
     private fun startHelper(): Boolean {
