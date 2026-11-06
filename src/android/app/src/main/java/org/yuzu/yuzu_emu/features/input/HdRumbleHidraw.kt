@@ -26,13 +26,10 @@ object HdRumbleHidraw {
     private const val NINTENDO_VID = 0x057E
     private const val RETRY_INTERVAL_MS = 5000L
     private const val READY_TIMEOUT_MS = 10_000L
-    private const val KEEP_ALIVE_MS = 100L
 
     private var process: Process? = null
     private var output: OutputStream? = null
     private var lastAttempt = 0L
-    private var lastPacket: ByteArray? = null
-    private var lastWriteAt = 0L
 
     @Volatile
     private var available = false
@@ -163,23 +160,9 @@ object HdRumbleHidraw {
         if (!available) return false
         val stream = output ?: return false
 
-        // The controller holds the last commanded state, so an unchanged
-        // payload only needs an occasional refresh to stay alive. Skipping the
-        // duplicates keeps the Bluetooth link from dropping reports. Byte 1 is
-        // the rolling counter and always differs, so compare the rumble bytes.
-        val now = System.currentTimeMillis()
-        val previous = lastPacket
-        val samePayload = previous != null && previous.size == packet.size &&
-            (2 until packet.size).all { previous[it] == packet[it] }
-        if (samePayload && now - lastWriteAt < KEEP_ALIVE_MS) {
-            return true
-        }
-
         return try {
             stream.write(packet)
             stream.flush()
-            lastPacket = packet.copyOf()
-            lastWriteAt = now
             true
         } catch (e: Exception) {
             Log.w(TAG, "write failed: $e")
@@ -199,7 +182,5 @@ object HdRumbleHidraw {
         output = null
         available = false
         lastAttempt = 0L
-        lastPacket = null
-        lastWriteAt = 0L
     }
 }

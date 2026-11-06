@@ -1228,7 +1228,7 @@ class SettingsFragmentPresenter(
                     NativeConfig.setBoolean(key, value)
                 }
 
-                override val defaultValue = true
+                override val defaultValue = false
 
                 override fun getValueAsString(needsGlobal: Boolean): String =
                     getBoolean(needsGlobal).toString()

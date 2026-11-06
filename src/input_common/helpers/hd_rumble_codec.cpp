@@ -126,30 +126,17 @@ std::array<u8, 10> BuildPacket(const Common::Input::VibrationStatus& vibration, 
 
     f32 low_amplitude = vibration.low_amplitude;
     f32 high_amplitude = vibration.high_amplitude;
-    f32 high_frequency_hz = vibration.high_frequency;
-
-    // Actuators of this class only render the high band: a low-band-only
-    // report is silent even at full amplitude. Games that put most of their
-    // energy in the low band therefore came out as a faint buzz, so drive the
-    // high band with the low band's content whenever it is the stronger one.
-    if (low_amplitude > high_amplitude) {
-        high_amplitude = low_amplitude;
-        high_frequency_hz = vibration.low_frequency;
-    }
 
     if (boost) {
-        // Quiet textures sit near the actuator's dead zone: lift small
-        // amplitudes more than large ones.
+        // Opt-in only: quiet textures sit near the actuator's dead zone.
         low_amplitude = std::pow(low_amplitude, 0.65f) * 1.5f;
         high_amplitude = std::pow(high_amplitude, 0.65f) * 1.5f;
     }
 
-    const f32 clamp_amplitude = 1.0f / (std::max)(1.0f, high_amplitude + low_amplitude);
-
-    const u16 high_frequency = EncodeHighFrequency(high_frequency_hz);
-    const u8 high_amplitude_code = EncodeHighAmplitude(high_amplitude * clamp_amplitude);
+    const u16 high_frequency = EncodeHighFrequency(vibration.high_frequency);
+    const u8 high_amplitude_code = EncodeHighAmplitude(high_amplitude);
     const u8 low_frequency = EncodeLowFrequency(vibration.low_frequency);
-    const u16 low_amplitude_code = EncodeLowAmplitude(low_amplitude * clamp_amplitude);
+    const u16 low_amplitude_code = EncodeLowAmplitude(low_amplitude);
 
     packet[2] = static_cast<u8>(high_frequency & 0xFF);
     packet[3] = static_cast<u8>(high_amplitude_code | ((high_frequency >> 8) & 0x01));
